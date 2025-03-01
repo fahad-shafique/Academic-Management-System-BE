@@ -13,6 +13,15 @@ class UserSerializer(serializers.ModelSerializer):
             'matriculation_board', 'school', 'intermediate_number', 'college', 'intermediate_board',
             'previous_degree'
         ]
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        user = User.objects.create_user(**validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -32,19 +41,30 @@ class ParentSerializer(serializers.ModelSerializer):
         model = Parent
         fields = ['user']
 
+    def create(self, validated_data):
+        user_data = validated_data.pop('user')
+        user = UserSerializer.create(UserSerializer(), validated_data=user_data)
+        parent = Parent.objects.create(user=user, **validated_data)
+        return parent
 
-class StudentSerializer(serializers.ModelSerializer):
+class StudentListSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
     degree = DegreeSerializer()
     department = DepartmentSerializer()
     parents = ParentSerializer(many=True)
 
     class Meta:
         model = Student
-        fields = [
-            'user', 'sap_id', 'admission_year', 'status', 'graduation_year',
-            'registration_date', 'registered_by', 'degree', 'department', 'parents'
-        ]
+        fields = '__all__'
 
+class StudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = '__all__'
+
+    def create(self, validated_data):
+        student = Student.objects.create(**validated_data)
+        return student
 
 class FacultySerializer(serializers.ModelSerializer):
     department = DepartmentSerializer()
@@ -53,18 +73,18 @@ class FacultySerializer(serializers.ModelSerializer):
         model = Faculty
         fields = ['user', 'faculty_id', 'faculty_code', 'is_director', 'is_hod', 'department']
 
+    def create(self, validated_data):
+        faculty = Faculty.objects.create(**validated_data)
+        return faculty
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
         fields = ['role_id', 'role_name']
 
+class StatsSerializer(serializers.Serializer):
+    total_students = serializers.IntegerField()
+    total_departments = serializers.IntegerField()
+    total_degrees = serializers.IntegerField()
+    graduation_rate = serializers.ListField(child=serializers.FloatField())
 
-class PermissionSerializer(serializers.ModelSerializer):
-    role = RoleSerializer()
-    department = DepartmentSerializer()
-
-    class Meta:
-        model = Permission
-        fields = ['permission_id', 'role', 'department', 'permission_field', 'can_view', 'can_edit', 'can_delete',
-                  'can_create']

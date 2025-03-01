@@ -100,6 +100,7 @@ class Degree(models.Model):
     degree_id = models.AutoField(primary_key=True)
     degree_name = models.CharField(max_length=100)
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    completion_period = models.PositiveIntegerField(default=4)
 
     def __str__(self):
         return self.degree_name
@@ -122,7 +123,7 @@ class Student(models.Model):
     registered_by = models.CharField(max_length=100)
     degree = models.ForeignKey(Degree, on_delete=models.SET_NULL, null=True, blank=True)
     department = models.ForeignKey(Department, related_name='primary_department', on_delete=models.CASCADE)
-    parents = models.ManyToManyField(Parent)
+    parents = models.ManyToManyField(Parent, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.sap_id}"
@@ -153,7 +154,4 @@ class Permission(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
     permission_field = models.CharField(max_length=50)
-    can_view = models.BooleanField(default=False)
-    can_edit = models.BooleanField(default=False)
-    can_delete = models.BooleanField(default=False)
-    can_create = models.BooleanField(default=False)
+    permitted = models.BooleanField(default=False)
