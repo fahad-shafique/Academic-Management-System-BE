@@ -29,6 +29,11 @@ urlpatterns = [
         view=views.EventDetailView.as_view(),
         name="api_user_event_detail",
     ),
+    path(
+        "my-event",
+        view=views.ParticipatedEventsView.as_view(),
+        name="api_user_event_detail",
+    ),
     # Profile
     path("profile", view=views.ProfileView.as_view(), name="api_profile"),
 ]

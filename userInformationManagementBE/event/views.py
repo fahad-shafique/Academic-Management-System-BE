@@ -104,8 +104,8 @@ def participate(request, id: int) -> Response:
     event = Event.objects.filter(id=id).first()
     if not event:
         raise NotFound("Event not found")
-
-    user: User = request.user
+    email = request.data['email']
+    user: User = User.objects.get(email=email)
     if event in user.participations.all():
         user.participations.remove(event)
     else:
@@ -138,8 +138,8 @@ class ClubDetailView(APIView):
 
     def get_object(self, id: int) -> Club:
         club = (
-            Club.objects.select_related("owner")
-            .filter(id=id, owner=self.request.user)
+            Club.objects
+            .filter(id=id)
             .first()
         )
         if not club:
@@ -177,10 +177,9 @@ class EventsView(ListCreateAPIView):
     serializer_class = s.EventListSerializer
 
     def create(self, request, club_id, *args, **kwargs):
-        club = Club.objects.filter(id=club_id, owner=request.user).first()
+        club = Club.objects.filter(id=club_id).first()
         if not club:
             raise NotFound("Club not found")
-        breakpoint()
         serializer = s.EventCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         event = Event(**serializer.validated_data)
@@ -201,7 +200,7 @@ class EventDetailView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get_object(self, id: int) -> Event:
-        event = Event.objects.filter(id=id, club__owner=self.request.user).first()
+        event = Event.objects.filter(id=id).first()
         if not event:
             raise NotFound("Event not found")
 
@@ -209,7 +208,7 @@ class EventDetailView(APIView):
 
     def get(self, request, id, *args, **kwargs) -> Response:
         return Response(
-            s.EventSerializer(self.get_object(), context={"user": request.user})
+            s.EventSerializer(self.get_object(id), context={"user": request.user}).data
         )
 
     def put(self, request, id, *args, **kwargs) -> Response:
@@ -222,7 +221,7 @@ class EventDetailView(APIView):
         event.save()
 
         return Response(
-            s.EventSerializer(self.get_object(), context={"user": request.user})
+            s.EventSerializer(self.get_object(id), context={"user": request.user}).data
         )
 
     def delete(self, request, id, *args, **kwargs) -> Response:
@@ -237,3 +236,12 @@ class ProfileView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response(self.serializer_class(request.user).data)
+
+class ParticipatedEventsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Query events where the current user is in the participaters ManyToMany field
+        events = Event.objects.filter(participaters=request.user)
+        serializer = s.EventSerializer(events, many=True, context={"user": request.user})
+        return Response(serializer.data)

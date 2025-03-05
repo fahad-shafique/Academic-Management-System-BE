@@ -58,9 +58,12 @@ class UserViewSet(viewsets.ViewSet):
 
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def retrieve(self, request):
+    def retrieve(self, request, pk=None):
         try:
-            user_id = request.user.id
+            if pk is not None:
+                user_id = pk
+            else:
+                user_id = request.user.id
             user = User.objects.get(pk=user_id)
             serializer = UserSerializer(user)
             return Response(serializer.data)
